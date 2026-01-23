@@ -24,10 +24,9 @@ def train_model():
     )
     
     model = RandomForestRegressor(
-        n_estimators=100,
-        max_depth=10,
+        n_estimators=200,
+        max_depth=20,
         random_state=42,
-        n_jobs=-1
     )
     model.fit(X_train, y_train)
     
