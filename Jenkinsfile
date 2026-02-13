@@ -1,64 +1,60 @@
 pipeline {
     agent any
-    
+
     environment {
-        DOCKER_IMAGE = "2022bcs0084-jenkins:latest"
+        DOCKER_IMAGE = "arjundockerhublab/lab6-model"
         CURRENT_ACCURACY = ""
         BEST_ACCURACY = credentials('best-accuracy')
         SHOULD_DEPLOY = "false"
     }
-    
+
     stages {
+
         stage('Checkout') {
             steps {
                 echo 'Cloning GitHub repository...'
                 checkout scm
             }
         }
-        
-        stage('Setup Python Virtual Environment') {
+
+        stage('Train Model in Python 3.11 Container') {
             steps {
-                echo 'Setting up Python virtual environment...'
-                sh '''
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    pip install --upgrade pip
-                    pip install -r requirements.txt
-                '''
+                echo 'Running training inside Python 3.11 container...'
+                script {
+                    docker.image('python:3.11-slim').inside {
+                        sh '''
+                            python -m venv venv
+                            . venv/bin/activate
+                            pip install --upgrade pip
+                            pip install -r requirements.txt
+                            python scripts/train.py
+                        '''
+                    }
+                }
             }
         }
-        
-        stage('Train Model') {
-            steps {
-                echo 'Training model...'
-                sh '''
-                    . venv/bin/activate
-                    python scripts/train.py
-                '''
-            }
-        }
-        
+
         stage('Read Accuracy') {
             steps {
                 echo 'Reading accuracy from metrics.json...'
                 script {
                     def metrics = readJSON file: 'app/artifacts/metrics.json'
-                    CURRENT_ACCURACY = metrics.accuracy
+                    CURRENT_ACCURACY = metrics.accuracy.toString()
                     echo "Current Accuracy: ${CURRENT_ACCURACY}"
                 }
             }
         }
-        
+
         stage('Compare Accuracy') {
             steps {
                 echo 'Comparing accuracy...'
                 script {
                     def currentAcc = CURRENT_ACCURACY.toFloat()
                     def bestAcc = BEST_ACCURACY.toFloat()
-                    
+
                     echo "Current Accuracy: ${currentAcc}"
                     echo "Best Accuracy: ${bestAcc}"
-                    
+
                     if (currentAcc > bestAcc) {
                         SHOULD_DEPLOY = "true"
                         echo "✓ New model is better! Will build and push Docker image."
@@ -69,7 +65,7 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Build Docker Image') {
             when {
                 expression { SHOULD_DEPLOY == "true" }
@@ -77,13 +73,11 @@ pipeline {
             steps {
                 echo 'Building Docker image...'
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
-                        def customImage = docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}")
-                    }
+                    docker.build("${DOCKER_IMAGE}:${BUILD_NUMBER}", ".")
                 }
             }
         }
-        
+
         stage('Push Docker Image') {
             when {
                 expression { SHOULD_DEPLOY == "true" }
@@ -92,15 +86,15 @@ pipeline {
                 echo 'Pushing Docker image to Docker Hub...'
                 script {
                     docker.withRegistry('https://index.docker.io/v1/', 'dockerhub-creds') {
-                        def customImage = docker.image("${DOCKER_IMAGE}:${BUILD_NUMBER}")
-                        customImage.push()
-                        customImage.push('latest')
+                        def image = docker.image("${DOCKER_IMAGE}:${BUILD_NUMBER}")
+                        image.push()
+                        image.push("latest")
                     }
                 }
             }
         }
     }
-    
+
     post {
         always {
             echo 'Archiving artifacts...'
