@@ -23,8 +23,6 @@ pipeline {
                 script {
                     docker.image('python:3.11-slim').inside {
                         sh '''
-                            python -m venv venv
-                            . venv/bin/activate
                             pip install --upgrade pip
                             pip install -r requirements.txt
                             python scripts/train.py
