@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = "2022bcs0084/2022bcd0084-jenkins:latest"
+        DOCKER_IMAGE = "2022bcs0084-jenkins:latest"
         CURRENT_ACCURACY = ""
         BEST_ACCURACY = credentials('best-accuracy')
         SHOULD_DEPLOY = "false"
