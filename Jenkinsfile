@@ -36,9 +36,9 @@ pipeline {
             steps {
                 echo 'Reading accuracy from metrics.json...'
                 script {
-                    def metrics = readJSON file: 'app/artifacts/metrics.json'
-                    CURRENT_ACCURACY = metrics.accuracy.toString()
-                    echo "Current Accuracy: ${CURRENT_ACCURACY}"
+                    def metrics = readJSON file: 'model/metrics.json'
+                    CURRENT_ACCURACY = metrics.r2_score.toString()
+                    echo "Current Accuracy (R2): ${CURRENT_ACCURACY}"
                 }
             }
         }
@@ -96,7 +96,7 @@ pipeline {
     post {
         always {
             echo 'Archiving artifacts...'
-            archiveArtifacts artifacts: 'app/artifacts/**', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'model/**', allowEmptyArchive: true
         }
     }
 }
